@@ -14,7 +14,10 @@ pub mod registry;
 pub mod loader;
 pub mod executor;
 
-pub use types::{Skill, SkillKind, SkillConfig, SkillMetadata};
+pub use types::{
+    Skill, SkillKind, SkillConfig, SkillMetadata, SkillVisibility, SkillContext, SkillResult,
+    SlashCommandConfig, HookConfig, WorkflowConfig, HookTrigger,
+};
 pub use registry::SkillRegistry;
-pub use loader::SkillLoader;
+pub use loader::{SkillLoader, LoaderError};
 pub use executor::SkillExecutor;
