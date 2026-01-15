@@ -639,6 +639,15 @@ pub async fn update_agent(
                     hooks: row.get(9)?,
                     created_at: row.get(10)?,
                     updated_at: row.get(11)?,
+                    subagents: None,
+                    permission_mode: None,
+                    allow_rules: None,
+                    deny_rules: None,
+                    mcp_servers: None,
+                    fallback_model: None,
+                    max_turns: None,
+                    description: None,
+                    is_opus_optimized: None,
                 })
             },
         )
@@ -1972,6 +1981,15 @@ pub async fn import_agent(db: State<'_, AgentDb>, json_data: String) -> Result<A
                     hooks: row.get(9)?,
                     created_at: row.get(10)?,
                     updated_at: row.get(11)?,
+                    subagents: None,
+                    permission_mode: None,
+                    allow_rules: None,
+                    deny_rules: None,
+                    mcp_servers: None,
+                    fallback_model: None,
+                    max_turns: None,
+                    description: None,
+                    is_opus_optimized: None,
                 })
             },
         )
