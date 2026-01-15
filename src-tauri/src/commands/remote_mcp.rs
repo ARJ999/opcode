@@ -3,22 +3,18 @@
 //! Tauri commands for managing remote MCP servers with Streamable HTTP transport.
 //! Supports Bearer token and API key authentication.
 
-use log::{error, info};
+use log::info;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Arc;
 use tauri::State;
 
 use crate::commands::agents::AgentDb;
-use crate::mcp::{
-    auth::{create_auth_from_config, McpApiKeyAuth, McpBearerAuth},
-    error::McpError,
-    health::{HealthStatus, McpHealthMonitor, ServerHealth},
-    streamable_http::StreamableHttpTransport,
-    transport::McpTransport,
-    types::{ConnectionStatus, HealthCheckConfig, McpAuthConfig, RemoteMcpServer, ServerCapabilities, Tool},
-};
+use crate::mcp::auth::{create_auth_from_config, McpAuth};
+use crate::mcp::health::{HealthStatus, ServerHealth};
+use crate::mcp::streamable_http::StreamableHttpTransport;
+use crate::mcp::transport::McpTransport;
+use crate::mcp::types::{McpAuthConfig, Tool};
 
 /// Remote MCP server for frontend
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,21 +222,21 @@ pub async fn test_remote_mcp_connection(
     db: State<'_, AgentDb>,
     id: String,
 ) -> Result<ServerHealth, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-
-    // Get server details
-    let (endpoint, auth_config_str): (String, Option<String>) = conn
-        .query_row(
-            "SELECT endpoint, auth_config FROM remote_mcp_servers WHERE id = ?1",
-            params![id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|e| format!("Server not found: {}", e))?;
-
-    drop(conn); // Release lock before async operations
+    // Get server details in a scoped block to release the lock
+    let (endpoint, auth_config_str) = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let result: (String, Option<String>) = conn
+            .query_row(
+                "SELECT endpoint, auth_config FROM remote_mcp_servers WHERE id = ?1",
+                params![id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|e| format!("Server not found: {}", e))?;
+        result
+    }; // conn is dropped here
 
     // Parse auth config
-    let auth: Option<Box<dyn crate::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
+    let auth: Option<Box<dyn McpAuth>> = if let Some(config_str) = auth_config_str {
         let config: McpAuthConfig = serde_json::from_str(&config_str)
             .map_err(|e| format!("Invalid auth config: {}", e))?;
         Some(create_auth_from_config(&config))
@@ -258,12 +254,14 @@ pub async fn test_remote_mcp_connection(
 
     let health = match result {
         Ok(()) => {
-            // Update status in database
-            let conn = db.0.lock().map_err(|e| e.to_string())?;
-            conn.execute(
-                "UPDATE remote_mcp_servers SET status = 'connected', last_health_check = ?1, latency_ms = ?2, updated_at = ?3 WHERE id = ?4",
-                params![chrono::Utc::now().to_rfc3339(), latency as i64, chrono::Utc::now().to_rfc3339(), id],
-            ).map_err(|e| e.to_string())?;
+            // Update status in database in a scoped block
+            {
+                let conn = db.0.lock().map_err(|e| e.to_string())?;
+                conn.execute(
+                    "UPDATE remote_mcp_servers SET status = 'connected', last_health_check = ?1, latency_ms = ?2, updated_at = ?3 WHERE id = ?4",
+                    params![chrono::Utc::now().to_rfc3339(), latency as i64, chrono::Utc::now().to_rfc3339(), id],
+                ).map_err(|e| e.to_string())?;
+            }
 
             ServerHealth {
                 server_id: id,
@@ -277,12 +275,14 @@ pub async fn test_remote_mcp_connection(
             }
         }
         Err(e) => {
-            // Update status in database
-            let conn = db.0.lock().map_err(|e| e.to_string())?;
-            conn.execute(
-                "UPDATE remote_mcp_servers SET status = 'error', last_health_check = ?1, updated_at = ?2 WHERE id = ?3",
-                params![chrono::Utc::now().to_rfc3339(), chrono::Utc::now().to_rfc3339(), id],
-            ).map_err(|e| e.to_string())?;
+            // Update status in database in a scoped block
+            {
+                let conn = db.0.lock().map_err(|e| e.to_string())?;
+                conn.execute(
+                    "UPDATE remote_mcp_servers SET status = 'error', last_health_check = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![chrono::Utc::now().to_rfc3339(), chrono::Utc::now().to_rfc3339(), id],
+                ).map_err(|e| e.to_string())?;
+            }
 
             ServerHealth {
                 server_id: id,
@@ -303,21 +303,21 @@ pub async fn test_remote_mcp_connection(
 /// List tools from a remote MCP server
 #[tauri::command]
 pub async fn list_remote_mcp_tools(db: State<'_, AgentDb>, id: String) -> Result<Vec<Tool>, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-
-    // Get server details
-    let (endpoint, auth_config_str): (String, Option<String>) = conn
-        .query_row(
-            "SELECT endpoint, auth_config FROM remote_mcp_servers WHERE id = ?1",
-            params![id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|e| format!("Server not found: {}", e))?;
-
-    drop(conn);
+    // Get server details in a scoped block to release the lock
+    let (endpoint, auth_config_str) = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let result: (String, Option<String>) = conn
+            .query_row(
+                "SELECT endpoint, auth_config FROM remote_mcp_servers WHERE id = ?1",
+                params![id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|e| format!("Server not found: {}", e))?;
+        result
+    }; // conn is dropped here
 
     // Parse auth config
-    let auth: Option<Box<dyn crate::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
+    let auth: Option<Box<dyn McpAuth>> = if let Some(config_str) = auth_config_str {
         let config: McpAuthConfig = serde_json::from_str(&config_str)
             .map_err(|e| format!("Invalid auth config: {}", e))?;
         Some(create_auth_from_config(&config))
@@ -350,21 +350,21 @@ pub async fn call_remote_mcp_tool(
     tool_name: String,
     arguments: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let conn = db.0.lock().map_err(|e| e.to_string())?;
-
-    // Get server details
-    let (endpoint, auth_config_str): (String, Option<String>) = conn
-        .query_row(
-            "SELECT endpoint, auth_config FROM remote_mcp_servers WHERE id = ?1",
-            params![server_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|e| format!("Server not found: {}", e))?;
-
-    drop(conn);
+    // Get server details in a scoped block to release the lock
+    let (endpoint, auth_config_str) = {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        let result: (String, Option<String>) = conn
+            .query_row(
+                "SELECT endpoint, auth_config FROM remote_mcp_servers WHERE id = ?1",
+                params![server_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|e| format!("Server not found: {}", e))?;
+        result
+    }; // conn is dropped here
 
     // Parse auth config
-    let auth: Option<Box<dyn crate::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
+    let auth: Option<Box<dyn McpAuth>> = if let Some(config_str) = auth_config_str {
         let config: McpAuthConfig = serde_json::from_str(&config_str)
             .map_err(|e| format!("Invalid auth config: {}", e))?;
         Some(create_auth_from_config(&config))

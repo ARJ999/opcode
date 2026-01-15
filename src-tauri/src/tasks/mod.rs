@@ -6,5 +6,5 @@
 pub mod manager;
 pub mod types;
 
-pub use manager::TaskManager;
+pub use manager::{TaskManager, TaskEvent};
 pub use types::{Task, TaskInfo, TaskStatus, TaskKind, TaskPriority, TaskProgress, TaskResult};

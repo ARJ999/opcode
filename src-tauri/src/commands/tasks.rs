@@ -2,15 +2,10 @@
 //!
 //! Tauri commands for managing parallel tasks.
 
-use log::{debug, error, info, warn};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::tasks::{
-    manager::TaskManager,
-    types::{Task, TaskInfo, TaskKind, TaskPriority, TaskProgress, TaskResult, TaskStatus},
-};
+use crate::tasks::{TaskManager, TaskEvent, TaskInfo};
 
 /// Task manager state
 pub struct TaskManagerState(pub Arc<TaskManager>);
@@ -100,31 +95,31 @@ pub fn setup_task_event_emitter(app: AppHandle, task_manager: Arc<TaskManager>) 
     tokio::spawn(async move {
         while let Ok(event) = rx.recv().await {
             let event_name = match &event {
-                crate::tasks::manager::TaskEvent::Created(_) => "task:created",
-                crate::tasks::manager::TaskEvent::Started(_) => "task:started",
-                crate::tasks::manager::TaskEvent::Progress(_, _) => "task:progress",
-                crate::tasks::manager::TaskEvent::Completed(_, _) => "task:completed",
-                crate::tasks::manager::TaskEvent::Cancelled(_) => "task:cancelled",
-                crate::tasks::manager::TaskEvent::Failed(_, _) => "task:failed",
+                TaskEvent::Created(_) => "task:created",
+                TaskEvent::Started(_) => "task:started",
+                TaskEvent::Progress(_, _) => "task:progress",
+                TaskEvent::Completed(_, _) => "task:completed",
+                TaskEvent::Cancelled(_) => "task:cancelled",
+                TaskEvent::Failed(_, _) => "task:failed",
             };
 
             let payload = match &event {
-                crate::tasks::manager::TaskEvent::Created(info) => {
+                TaskEvent::Created(info) => {
                     serde_json::to_value(info).ok()
                 }
-                crate::tasks::manager::TaskEvent::Started(id) => {
+                TaskEvent::Started(id) => {
                     Some(serde_json::json!({ "id": id }))
                 }
-                crate::tasks::manager::TaskEvent::Progress(id, progress) => {
+                TaskEvent::Progress(id, progress) => {
                     Some(serde_json::json!({ "id": id, "progress": progress }))
                 }
-                crate::tasks::manager::TaskEvent::Completed(id, result) => {
+                TaskEvent::Completed(id, result) => {
                     Some(serde_json::json!({ "id": id, "result": result }))
                 }
-                crate::tasks::manager::TaskEvent::Cancelled(id) => {
+                TaskEvent::Cancelled(id) => {
                     Some(serde_json::json!({ "id": id }))
                 }
-                crate::tasks::manager::TaskEvent::Failed(id, error) => {
+                TaskEvent::Failed(id, error) => {
                     Some(serde_json::json!({ "id": id, "error": error }))
                 }
             };

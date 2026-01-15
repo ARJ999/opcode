@@ -2,24 +2,18 @@
 //!
 //! Tauri commands for managing the unified skills system.
 
-use log::{debug, error, info, warn};
+use log::info;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tauri::State;
 
 use crate::commands::agents::AgentDb;
-use crate::skills::{
-    registry::SkillRegistry,
-    loader::{SkillLoader, LoaderError},
-    executor::SkillExecutor,
-    types::{
-        Skill, SkillKind, SkillVisibility, SkillConfig, SkillMetadata,
-        SkillContext, SkillResult, SlashCommandConfig, HookConfig, WorkflowConfig,
-        HookTrigger,
-    },
+use crate::skills::registry::SkillRegistry;
+use crate::skills::loader::SkillLoader;
+use crate::skills::types::{
+    Skill, SkillKind, SkillVisibility, SkillConfig, SlashCommandConfig, HookConfig, HookTrigger,
 };
 
 /// Skill info for frontend
@@ -318,39 +312,53 @@ pub async fn update_skill(
 ) -> Result<SkillInfo, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
-    // Get current skill
-    let current = conn
+    // Get current skill data
+    let (current_name, current_description, current_enabled, current_config, kind, visibility, source, project_path, created_at):
+        (String, String, bool, String, String, String, String, Option<String>, String) = conn
         .query_row(
-            "SELECT name, description, enabled, config FROM skills WHERE id = ?1",
+            "SELECT name, description, enabled, config, kind, visibility, source, project_path, created_at FROM skills WHERE id = ?1",
             params![id],
             |row| Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, bool>(2)?,
-                row.get::<_, String>(3)?,
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7).ok(),
+                row.get(8)?,
             )),
         )
         .map_err(|e| format!("Skill not found: {}", e))?;
 
-    let new_name = name.unwrap_or(current.0);
-    let new_description = description.unwrap_or(current.1);
-    let new_enabled = enabled.unwrap_or(current.2);
+    let new_name = name.unwrap_or(current_name);
+    let new_description = description.unwrap_or(current_description);
+    let new_enabled = enabled.unwrap_or(current_enabled);
     let new_config = config
-        .map(|c| serde_json::to_string(&c).unwrap_or(current.3.clone()))
-        .unwrap_or(current.3);
+        .map(|c| serde_json::to_string(&c).unwrap_or(current_config.clone()))
+        .unwrap_or(current_config);
 
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
         "UPDATE skills SET name = ?1, description = ?2, enabled = ?3, config = ?4, updated_at = ?5 WHERE id = ?6",
-        params![new_name, new_description, new_enabled, new_config, now, id.clone()],
+        params![new_name, new_description, new_enabled, new_config, now, id],
     ).map_err(|e| e.to_string())?;
 
-    // Drop conn to release the borrow before using db again
-    drop(conn);
-
-    // Fetch updated skill
-    get_skill(db, id).await.map(|s| SkillInfo::from(&s))
+    // Return updated skill info directly without re-querying
+    Ok(SkillInfo {
+        id,
+        kind,
+        name: new_name,
+        description: new_description,
+        visibility,
+        enabled: new_enabled,
+        source,
+        project_path,
+        created_at,
+        updated_at: now,
+    })
 }
 
 /// Delete a skill
@@ -371,7 +379,7 @@ pub async fn execute_slash_command(
     db: State<'_, AgentDb>,
     command_name: String,
     arguments: String,
-    project_path: String,
+    _project_path: String,
 ) -> Result<serde_json::Value, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
@@ -517,9 +525,12 @@ pub async fn import_claude_code_skills(
         .map(|d| d.join("opcode").join("skills"))
         .ok_or("Could not find data directory")?;
 
-    let loader = SkillLoader::new(skills_dir);
-    let skills = loader.import_claude_code_settings(&path).await
-        .map_err(|e| e.to_string())?;
+    // Load skills in a scoped block to avoid holding anything across await
+    let skills: Vec<Skill> = {
+        let loader = SkillLoader::new(skills_dir);
+        loader.import_claude_code_settings(&path).await
+            .map_err(|e| format!("Failed to import: {:?}", e))?
+    };
 
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let _ = init_skills_table(&conn);
@@ -570,13 +581,15 @@ pub async fn import_skill_from_github(
         .map(|d| d.join("opcode").join("skills"))
         .ok_or("Could not find data directory")?;
 
-    let mut loader = SkillLoader::new(skills_dir);
-    if let Some(token) = github_token {
-        loader = loader.with_github_token(token);
-    }
-
-    let skill = loader.load_from_github(&repo, &path).await
-        .map_err(|e| e.to_string())?;
+    // Load skill in a scoped block to avoid holding anything across await
+    let skill: Skill = {
+        let mut loader = SkillLoader::new(skills_dir);
+        if let Some(token) = github_token {
+            loader = loader.with_github_token(token);
+        }
+        loader.load_from_github(&repo, &path).await
+            .map_err(|e| format!("Failed to load from GitHub: {:?}", e))?
+    };
 
     let conn = db.0.lock().map_err(|e| e.to_string())?;
     let _ = init_skills_table(&conn);
