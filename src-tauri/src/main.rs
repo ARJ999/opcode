@@ -37,6 +37,11 @@ use commands::mcp::{
 };
 
 use commands::proxy::{apply_proxy_settings, get_proxy_settings, save_proxy_settings};
+use commands::remote_mcp::{
+    add_remote_mcp_server, call_remote_mcp_tool, list_remote_mcp_servers,
+    list_remote_mcp_tools, remove_remote_mcp_server, test_remote_mcp_connection,
+    update_remote_mcp_server,
+};
 use commands::storage::{
     storage_delete_row, storage_execute_sql, storage_insert_row, storage_list_tables,
     storage_read_table, storage_reset_database, storage_update_row,
@@ -289,6 +294,14 @@ fn main() {
             // Proxy Settings
             get_proxy_settings,
             save_proxy_settings,
+            // Remote MCP Servers (Opcode 2.0)
+            list_remote_mcp_servers,
+            add_remote_mcp_server,
+            remove_remote_mcp_server,
+            test_remote_mcp_connection,
+            list_remote_mcp_tools,
+            call_remote_mcp_tool,
+            update_remote_mcp_server,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
