@@ -480,6 +480,7 @@ export function RemoteMcpManager() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<RemoteMcpServer | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
 
   const loadServers = useCallback(async () => {
     try {
