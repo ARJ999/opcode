@@ -313,7 +313,8 @@ impl Task {
     /// Get duration in milliseconds
     pub fn duration_ms(&self) -> Option<u64> {
         let start = self.started_at.as_ref()?;
-        let end = self.completed_at.as_ref().or(Some(&chrono::Utc::now().to_rfc3339()))?;
+        let now_str = chrono::Utc::now().to_rfc3339();
+        let end = self.completed_at.as_ref().unwrap_or(&now_str);
 
         let start_dt = chrono::DateTime::parse_from_rfc3339(start).ok()?;
         let end_dt = chrono::DateTime::parse_from_rfc3339(end).ok()?;

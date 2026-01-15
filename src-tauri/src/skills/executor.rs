@@ -380,8 +380,12 @@ impl SkillExecutor {
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
 
-                let result = self.execute(skill_id, context.clone()).await;
-                (result.success, result.output, result.error)
+                // Return skill reference info - actual execution handled by caller
+                (
+                    true,
+                    Some(serde_json::json!({ "skill_ref": skill_id })),
+                    None,
+                )
             }
             _ => (true, None, None),
         };

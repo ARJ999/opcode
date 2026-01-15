@@ -343,8 +343,11 @@ pub async fn update_skill(
 
     conn.execute(
         "UPDATE skills SET name = ?1, description = ?2, enabled = ?3, config = ?4, updated_at = ?5 WHERE id = ?6",
-        params![new_name, new_description, new_enabled, new_config, now, id],
+        params![new_name, new_description, new_enabled, new_config, now, id.clone()],
     ).map_err(|e| e.to_string())?;
+
+    // Drop conn to release the borrow before using db again
+    drop(conn);
 
     // Fetch updated skill
     get_skill(db, id).await.map(|s| SkillInfo::from(&s))
