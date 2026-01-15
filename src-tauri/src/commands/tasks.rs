@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::tasks::{
+use opcode_lib::tasks::{
     manager::TaskManager,
     types::{Task, TaskInfo, TaskKind, TaskPriority, TaskProgress, TaskResult, TaskStatus},
 };
@@ -100,31 +100,31 @@ pub fn setup_task_event_emitter(app: AppHandle, task_manager: Arc<TaskManager>) 
     tokio::spawn(async move {
         while let Ok(event) = rx.recv().await {
             let event_name = match &event {
-                crate::tasks::manager::TaskEvent::Created(_) => "task:created",
-                crate::tasks::manager::TaskEvent::Started(_) => "task:started",
-                crate::tasks::manager::TaskEvent::Progress(_, _) => "task:progress",
-                crate::tasks::manager::TaskEvent::Completed(_, _) => "task:completed",
-                crate::tasks::manager::TaskEvent::Cancelled(_) => "task:cancelled",
-                crate::tasks::manager::TaskEvent::Failed(_, _) => "task:failed",
+                opcode_lib::tasks::manager::TaskEvent::Created(_) => "task:created",
+                opcode_lib::tasks::manager::TaskEvent::Started(_) => "task:started",
+                opcode_lib::tasks::manager::TaskEvent::Progress(_, _) => "task:progress",
+                opcode_lib::tasks::manager::TaskEvent::Completed(_, _) => "task:completed",
+                opcode_lib::tasks::manager::TaskEvent::Cancelled(_) => "task:cancelled",
+                opcode_lib::tasks::manager::TaskEvent::Failed(_, _) => "task:failed",
             };
 
             let payload = match &event {
-                crate::tasks::manager::TaskEvent::Created(info) => {
+                opcode_lib::tasks::manager::TaskEvent::Created(info) => {
                     serde_json::to_value(info).ok()
                 }
-                crate::tasks::manager::TaskEvent::Started(id) => {
+                opcode_lib::tasks::manager::TaskEvent::Started(id) => {
                     Some(serde_json::json!({ "id": id }))
                 }
-                crate::tasks::manager::TaskEvent::Progress(id, progress) => {
+                opcode_lib::tasks::manager::TaskEvent::Progress(id, progress) => {
                     Some(serde_json::json!({ "id": id, "progress": progress }))
                 }
-                crate::tasks::manager::TaskEvent::Completed(id, result) => {
+                opcode_lib::tasks::manager::TaskEvent::Completed(id, result) => {
                     Some(serde_json::json!({ "id": id, "result": result }))
                 }
-                crate::tasks::manager::TaskEvent::Cancelled(id) => {
+                opcode_lib::tasks::manager::TaskEvent::Cancelled(id) => {
                     Some(serde_json::json!({ "id": id }))
                 }
-                crate::tasks::manager::TaskEvent::Failed(id, error) => {
+                opcode_lib::tasks::manager::TaskEvent::Failed(id, error) => {
                     Some(serde_json::json!({ "id": id, "error": error }))
                 }
             };

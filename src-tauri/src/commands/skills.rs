@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tauri::State;
 
 use crate::commands::agents::AgentDb;
-use crate::skills::{
+use opcode_lib::skills::{
     registry::SkillRegistry,
     loader::{SkillLoader, LoaderError},
     executor::SkillExecutor,
