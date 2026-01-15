@@ -11,6 +11,7 @@ pub mod mcp;         // MCP Streamable HTTP transport for remote servers
 pub mod process;
 pub mod session;     // Session management with DashMap
 pub mod skills;      // Unified skills system (slash commands, hooks, workflows)
+pub mod tasks;       // Parallel tasks and background job management
 pub mod web_server;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
