@@ -40,7 +40,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
@@ -67,14 +66,6 @@ interface SkillInfo {
   updated_at: string;
 }
 
-interface SlashCommand {
-  id: string;
-  name: string;
-  description: string;
-  help: string | null;
-  requires_args: boolean;
-  examples: string[];
-}
 
 // Skill type icons
 const SKILL_ICONS: Record<string, string> = {
