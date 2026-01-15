@@ -103,7 +103,7 @@ export const MCPManager: React.FC<MCPManagerProps> = ({
             <div>
               <h1 className="text-heading-1">MCP Servers</h1>
               <p className="mt-1 text-body-small text-muted-foreground">
-                Manage Model Context Protocol servers
+                Connect to your remote MCP servers via Streamable HTTP (HTTPS)
               </p>
             </div>
           </div>

@@ -156,9 +156,11 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
       case "stdio":
         return <Terminal className="h-4 w-4 text-amber-500" />;
       case "sse":
+      case "streamable_http":
+      case "http":
         return <Globe className="h-4 w-4 text-emerald-500" />;
       default:
-        return <Network className="h-4 w-4 text-blue-500" />;
+        return <Network className="h-4 w-4 text-emerald-500" />;
     }
   };
 
@@ -242,7 +244,7 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
                 </div>
               )}
               
-              {server.transport === "sse" && server.url && !isExpanded && (
+              {(server.transport === "sse" || server.transport === "streamable_http" || server.transport === "http") && server.url && !isExpanded && (
                 <div className="overflow-hidden">
                   <p className="text-xs text-muted-foreground font-mono truncate pl-9" title={server.url}>
                     {server.url}
@@ -341,9 +343,9 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
                 </div>
               )}
               
-              {server.transport === "sse" && server.url && (
+              {(server.transport === "sse" || server.transport === "streamable_http" || server.transport === "http") && server.url && (
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">URL</p>
+                  <p className="text-xs font-medium text-muted-foreground">HTTPS Endpoint</p>
                   <p className="text-xs font-mono bg-muted/50 p-2 rounded break-all">
                     {server.url}
                   </p>
@@ -404,11 +406,11 @@ export const MCPServerList: React.FC<MCPServerListProps> = ({
       {servers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="p-4 bg-primary/10 rounded-full mb-4">
-            <Network className="h-12 w-12 text-primary" />
+            <Globe className="h-12 w-12 text-primary" />
           </div>
-          <p className="text-muted-foreground mb-2 font-medium">No MCP servers configured</p>
+          <p className="text-muted-foreground mb-2 font-medium">No remote MCP servers configured</p>
           <p className="text-sm text-muted-foreground">
-            Add a server to get started with Model Context Protocol
+            Add a Streamable HTTP server to connect to your VPS-hosted MCP tools
           </p>
         </div>
       ) : (

@@ -1556,6 +1556,135 @@ export const api = {
     }
   },
 
+  // ============================================
+  // Remote MCP Server API (Streamable HTTP)
+  // ============================================
+
+  /**
+   * Adds a new remote MCP server via Streamable HTTP
+   * @param name - Unique server name
+   * @param endpoint - HTTPS endpoint URL
+   * @param authConfig - Optional authentication configuration
+   * @returns Promise resolving to add result
+   */
+  async addRemoteMcpServer(
+    name: string,
+    endpoint: string,
+    authConfig?: { type: string; token?: string; header_name?: string }
+  ): Promise<AddServerResult> {
+    try {
+      return await apiCall<AddServerResult>("add_remote_mcp_server", {
+        name,
+        endpoint,
+        authConfig: authConfig ? JSON.stringify(authConfig) : undefined
+      });
+    } catch (error) {
+      console.error("Failed to add remote MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lists all remote MCP servers
+   * @returns Promise resolving to array of remote server info
+   */
+  async listRemoteMcpServers(): Promise<Array<{
+    id: number;
+    name: string;
+    endpoint: string;
+    auth_type: string;
+    created_at: string;
+    updated_at: string;
+  }>> {
+    try {
+      return await apiCall<Array<{
+        id: number;
+        name: string;
+        endpoint: string;
+        auth_type: string;
+        created_at: string;
+        updated_at: string;
+      }>>("list_remote_mcp_servers");
+    } catch (error) {
+      console.error("Failed to list remote MCP servers:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Removes a remote MCP server
+   * @param id - Server ID to remove
+   * @returns Promise resolving to success message
+   */
+  async removeRemoteMcpServer(id: number): Promise<string> {
+    try {
+      return await apiCall<string>("remove_remote_mcp_server", { id });
+    } catch (error) {
+      console.error("Failed to remove remote MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Tests connection to a remote MCP server
+   * @param id - Server ID to test
+   * @returns Promise resolving to test result
+   */
+  async testRemoteMcpServer(id: number): Promise<{ success: boolean; message: string; tools_count?: number }> {
+    try {
+      return await apiCall<{ success: boolean; message: string; tools_count?: number }>("test_remote_mcp_server", { id });
+    } catch (error) {
+      console.error("Failed to test remote MCP server:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lists tools available on a remote MCP server
+   * @param id - Server ID
+   * @returns Promise resolving to array of tool info
+   */
+  async listRemoteMcpTools(id: number): Promise<Array<{
+    name: string;
+    description?: string;
+    input_schema?: object;
+  }>> {
+    try {
+      return await apiCall<Array<{
+        name: string;
+        description?: string;
+        input_schema?: object;
+      }>>("list_remote_mcp_tools", { id });
+    } catch (error) {
+      console.error("Failed to list remote MCP tools:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Invokes a tool on a remote MCP server
+   * @param serverId - Server ID
+   * @param toolName - Name of the tool to invoke
+   * @param args - Tool arguments as JSON object
+   * @returns Promise resolving to tool result
+   */
+  async invokeRemoteMcpTool(
+    serverId: number,
+    toolName: string,
+    args: Record<string, unknown>
+  ): Promise<{ success: boolean; result?: unknown; error?: string }> {
+    try {
+      return await apiCall<{ success: boolean; result?: unknown; error?: string }>("invoke_remote_mcp_tool", {
+        serverId,
+        toolName,
+        args: JSON.stringify(args)
+      });
+    } catch (error) {
+      console.error("Failed to invoke remote MCP tool:", error);
+      throw error;
+    }
+  },
+
   /**
    * Get the stored Claude binary path from settings
    * @returns Promise resolving to the path if set, null otherwise
