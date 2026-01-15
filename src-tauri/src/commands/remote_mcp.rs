@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tauri::State;
 
 use crate::commands::agents::AgentDb;
-use opcode_lib::mcp::{
+use crate::mcp::{
     auth::{create_auth_from_config, McpApiKeyAuth, McpBearerAuth},
     error::McpError,
     health::{HealthStatus, McpHealthMonitor, ServerHealth},
@@ -240,7 +240,7 @@ pub async fn test_remote_mcp_connection(
     drop(conn); // Release lock before async operations
 
     // Parse auth config
-    let auth: Option<Box<dyn opcode_lib::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
+    let auth: Option<Box<dyn crate::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
         let config: McpAuthConfig = serde_json::from_str(&config_str)
             .map_err(|e| format!("Invalid auth config: {}", e))?;
         Some(create_auth_from_config(&config))
@@ -317,7 +317,7 @@ pub async fn list_remote_mcp_tools(db: State<'_, AgentDb>, id: String) -> Result
     drop(conn);
 
     // Parse auth config
-    let auth: Option<Box<dyn opcode_lib::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
+    let auth: Option<Box<dyn crate::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
         let config: McpAuthConfig = serde_json::from_str(&config_str)
             .map_err(|e| format!("Invalid auth config: {}", e))?;
         Some(create_auth_from_config(&config))
@@ -364,7 +364,7 @@ pub async fn call_remote_mcp_tool(
     drop(conn);
 
     // Parse auth config
-    let auth: Option<Box<dyn opcode_lib::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
+    let auth: Option<Box<dyn crate::mcp::auth::McpAuth>> = if let Some(config_str) = auth_config_str {
         let config: McpAuthConfig = serde_json::from_str(&config_str)
             .map_err(|e| format!("Invalid auth config: {}", e))?;
         Some(create_auth_from_config(&config))

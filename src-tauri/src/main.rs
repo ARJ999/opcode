@@ -4,7 +4,11 @@
 mod checkpoint;
 mod claude_binary;
 mod commands;
+mod mcp;
 mod process;
+mod session;
+mod skills;
+mod tasks;
 
 use checkpoint::state::CheckpointState;
 use commands::agents::{
