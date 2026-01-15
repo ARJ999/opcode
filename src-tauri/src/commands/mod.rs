@@ -2,9 +2,10 @@ pub mod agents;
 pub mod claude;
 pub mod mcp;
 pub mod proxy;
-pub mod remote_mcp;  // Opcode 2.0: Remote MCP server management
-pub mod skills;      // Opcode 2.0: Unified skills system
+// Note: Opcode 2.0 modules temporarily disabled pending module structure refactoring
+// pub mod remote_mcp;
+// pub mod skills;
+// pub mod tasks;
 pub mod slash_commands;
 pub mod storage;
-pub mod tasks;       // Opcode 2.0: Parallel tasks manager
 pub mod usage;

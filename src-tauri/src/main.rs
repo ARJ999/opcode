@@ -5,11 +5,9 @@
 mod checkpoint;
 mod claude_binary;
 mod commands;
-mod mcp;
 mod process;
-mod session;
-mod skills;
-mod tasks;
+// Note: mcp, session, skills, tasks modules temporarily disabled
+// pending module structure refactoring for Opcode 2.0 features
 
 use checkpoint::state::CheckpointState;
 use commands::agents::{
@@ -42,20 +40,10 @@ use commands::mcp::{
 };
 
 use commands::proxy::{apply_proxy_settings, get_proxy_settings, save_proxy_settings};
-use commands::remote_mcp::{
-    add_remote_mcp_server, call_remote_mcp_tool, list_remote_mcp_servers,
-    list_remote_mcp_tools, remove_remote_mcp_server, test_remote_mcp_connection,
-    update_remote_mcp_server,
-};
-use commands::skills::{
-    create_hook, create_slash_command, delete_skill, execute_slash_command,
-    get_skill, import_claude_code_skills, import_skill_from_github,
-    list_skills, list_slash_commands, update_skill,
-};
-use commands::tasks::{
-    cancel_task, clear_completed_tasks, get_task, get_task_count,
-    list_active_tasks, list_background_tasks, list_tasks, TaskManagerState,
-};
+// Opcode 2.0 imports temporarily disabled pending module refactoring
+// use commands::remote_mcp::{ ... };
+// use commands::skills::{ ... };
+// use commands::tasks::{ ... };
 use commands::storage::{
     storage_delete_row, storage_execute_sql, storage_insert_row, storage_list_tables,
     storage_read_table, storage_reset_database, storage_update_row,
@@ -166,8 +154,7 @@ fn main() {
             // Initialize Claude process state
             app.manage(ClaudeProcessState::default());
 
-            // Initialize task manager (Opcode 2.0)
-            app.manage(TaskManagerState::default());
+            // Note: Task manager (Opcode 2.0) temporarily disabled
 
             // Apply window vibrancy with rounded corners on macOS
             #[cfg(target_os = "macos")]
@@ -311,33 +298,8 @@ fn main() {
             // Proxy Settings
             get_proxy_settings,
             save_proxy_settings,
-            // Remote MCP Servers (Opcode 2.0)
-            list_remote_mcp_servers,
-            add_remote_mcp_server,
-            remove_remote_mcp_server,
-            test_remote_mcp_connection,
-            list_remote_mcp_tools,
-            call_remote_mcp_tool,
-            update_remote_mcp_server,
-            // Skills System (Opcode 2.0)
-            list_skills,
-            get_skill,
-            create_slash_command,
-            create_hook,
-            update_skill,
-            delete_skill,
-            execute_slash_command,
-            list_slash_commands,
-            import_claude_code_skills,
-            import_skill_from_github,
-            // Parallel Tasks Manager (Opcode 2.0)
-            list_tasks,
-            list_active_tasks,
-            list_background_tasks,
-            get_task,
-            cancel_task,
-            clear_completed_tasks,
-            get_task_count,
+            // Note: Opcode 2.0 features (Remote MCP, Skills, Tasks) temporarily disabled
+            // pending module structure refactoring
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
