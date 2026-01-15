@@ -42,6 +42,11 @@ use commands::remote_mcp::{
     list_remote_mcp_tools, remove_remote_mcp_server, test_remote_mcp_connection,
     update_remote_mcp_server,
 };
+use commands::skills::{
+    create_hook, create_slash_command, delete_skill, execute_slash_command,
+    get_skill, import_claude_code_skills, import_skill_from_github,
+    list_skills, list_slash_commands, update_skill,
+};
 use commands::storage::{
     storage_delete_row, storage_execute_sql, storage_insert_row, storage_list_tables,
     storage_read_table, storage_reset_database, storage_update_row,
@@ -302,6 +307,17 @@ fn main() {
             list_remote_mcp_tools,
             call_remote_mcp_tool,
             update_remote_mcp_server,
+            // Skills System (Opcode 2.0)
+            list_skills,
+            get_skill,
+            create_slash_command,
+            create_hook,
+            update_skill,
+            delete_skill,
+            execute_slash_command,
+            list_slash_commands,
+            import_claude_code_skills,
+            import_skill_from_github,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

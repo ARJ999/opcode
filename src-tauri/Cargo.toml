@@ -73,6 +73,7 @@ parking_lot = "0.12"                      # Faster synchronization primitives
 tokio-stream = "0.1"                      # Stream utilities for async operations
 bytes = "1.5"                             # Efficient byte buffer handling
 url = "2.5"                               # URL parsing and manipulation
+toml = "0.8"                              # TOML parsing for Claude Code settings
 
 
 [target.'cfg(target_os = "macos")'.dependencies]
