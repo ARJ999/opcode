@@ -891,8 +891,8 @@ pub async fn execute_agent(
         }
     };
 
-    // Build arguments
-    let args = vec![
+    // Build arguments with Opcode 2.0 enhanced options
+    let mut args = vec![
         "-p".to_string(),
         task.clone(),
         "--system-prompt".to_string(),
@@ -902,8 +902,74 @@ pub async fn execute_agent(
         "--output-format".to_string(),
         "stream-json".to_string(),
         "--verbose".to_string(),
-        "--dangerously-skip-permissions".to_string(),
     ];
+
+    // Add permission mode based on agent settings
+    let permission_mode = agent.permission_mode.as_deref().unwrap_or("bypassPermissions");
+    match permission_mode {
+        "plan" => {
+            args.push("--permission-mode".to_string());
+            args.push("plan".to_string());
+        }
+        "acceptEdits" => {
+            args.push("--permission-mode".to_string());
+            args.push("acceptEdits".to_string());
+        }
+        "bypassPermissions" => {
+            args.push("--dangerously-skip-permissions".to_string());
+        }
+        "default" => {
+            // No special permission flags - use Claude's default behavior
+        }
+        _ => {
+            // Unknown mode, default to bypass for backwards compatibility
+            args.push("--dangerously-skip-permissions".to_string());
+        }
+    }
+
+    // Add allow rules if present
+    if let Some(ref allow_rules) = agent.allow_rules {
+        if let Ok(rules) = serde_json::from_str::<Vec<PermissionRule>>(allow_rules) {
+            for rule in rules {
+                args.push("--allowedTools".to_string());
+                args.push(format!("{}:{}", rule.tool, rule.matcher));
+            }
+        }
+    }
+
+    // Add deny rules if present
+    if let Some(ref deny_rules) = agent.deny_rules {
+        if let Ok(rules) = serde_json::from_str::<Vec<PermissionRule>>(deny_rules) {
+            for rule in rules {
+                args.push("--disallowedTools".to_string());
+                args.push(format!("{}:{}", rule.tool, rule.matcher));
+            }
+        }
+    }
+
+    // Add MCP servers if present
+    if let Some(ref mcp_servers) = agent.mcp_servers {
+        if let Ok(servers) = serde_json::from_str::<Vec<String>>(mcp_servers) {
+            for server in servers {
+                args.push("--mcp-server".to_string());
+                args.push(server);
+            }
+        }
+    }
+
+    // Add max turns if specified
+    if let Some(max_turns) = agent.max_turns {
+        if max_turns > 0 {
+            args.push("--max-turns".to_string());
+            args.push(max_turns.to_string());
+        }
+    }
+
+    info!(
+        "Executing agent with permission_mode={}, args count={}",
+        permission_mode,
+        args.len()
+    );
 
     // Always use system binary execution (sidecar removed)
     spawn_agent_system(
