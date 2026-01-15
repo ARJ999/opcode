@@ -1,14 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod checkpoint;
-mod claude_binary;
-mod commands;
-mod mcp;
-mod process;
-mod session;
-mod skills;
-mod tasks;
+// Import from the library crate instead of re-declaring modules
+use opcode_lib::checkpoint;
+use opcode_lib::commands;
+use opcode_lib::process;
 
 use checkpoint::state::CheckpointState;
 use commands::agents::{
@@ -303,10 +299,10 @@ fn main() {
             storage_execute_sql,
             storage_reset_database,
             // Slash Commands
-            commands::slash_commands::slash_commands_list,
-            commands::slash_commands::slash_command_get,
-            commands::slash_commands::slash_command_save,
-            commands::slash_commands::slash_command_delete,
+            opcode_lib::commands::slash_commands::slash_commands_list,
+            opcode_lib::commands::slash_commands::slash_command_get,
+            opcode_lib::commands::slash_commands::slash_command_save,
+            opcode_lib::commands::slash_commands::slash_command_delete,
             // Proxy Settings
             get_proxy_settings,
             save_proxy_settings,
