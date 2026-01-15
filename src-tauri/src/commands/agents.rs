@@ -21,6 +21,7 @@ fn find_claude_binary(app_handle: &AppHandle) -> Result<String, String> {
 }
 
 /// Represents a CC Agent stored in the database
+/// Enhanced for Opcode 2.0 with subagents, permissions, and MCP integration
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Agent {
     pub id: Option<i64>,
@@ -35,6 +36,54 @@ pub struct Agent {
     pub hooks: Option<String>, // JSON string of hooks configuration
     pub created_at: String,
     pub updated_at: String,
+
+    // Opcode 2.0 Enhanced Fields
+    /// JSON array of subagent definitions
+    #[serde(default)]
+    pub subagents: Option<String>,
+    /// Permission mode: "default", "plan", "acceptEdits", "bypassPermissions"
+    #[serde(default)]
+    pub permission_mode: Option<String>,
+    /// JSON array of allow rules for tools
+    #[serde(default)]
+    pub allow_rules: Option<String>,
+    /// JSON array of deny rules for tools
+    #[serde(default)]
+    pub deny_rules: Option<String>,
+    /// JSON array of enabled MCP server IDs
+    #[serde(default)]
+    pub mcp_servers: Option<String>,
+    /// Fallback model when primary is overloaded
+    #[serde(default)]
+    pub fallback_model: Option<String>,
+    /// Maximum agentic turns limit
+    #[serde(default)]
+    pub max_turns: Option<i32>,
+    /// Agent description for UI display
+    #[serde(default)]
+    pub description: Option<String>,
+    /// Whether this is an Opus 4.5 optimized agent
+    #[serde(default)]
+    pub is_opus_optimized: Option<bool>,
+}
+
+/// Subagent definition for enhanced agents
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubagentDef {
+    pub name: String,
+    pub description: Option<String>,
+    pub system_prompt: String,
+    pub tools: Vec<String>,
+    pub model: Option<String>,
+}
+
+/// Permission rule for agent tool access
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PermissionRule {
+    pub tool: String,
+    pub matcher: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 /// Represents an agent execution run
@@ -263,6 +312,42 @@ pub fn init_database(app: &AppHandle) -> SqliteResult<Connection> {
         [],
     );
 
+    // Opcode 2.0 Enhanced Agent Schema Migration
+    info!("Running Opcode 2.0 enhanced agent schema migration...");
+
+    // Subagents support - JSON array of subagent definitions
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN subagents TEXT", []);
+
+    // Permission mode: "default", "plan", "acceptEdits", "bypassPermissions"
+    let _ = conn.execute(
+        "ALTER TABLE agents ADD COLUMN permission_mode TEXT DEFAULT 'default'",
+        [],
+    );
+
+    // Allow/Deny rules - JSON arrays of permission rules
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN allow_rules TEXT", []);
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN deny_rules TEXT", []);
+
+    // MCP server integration - JSON array of enabled MCP server IDs
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN mcp_servers TEXT", []);
+
+    // Fallback model when primary is overloaded
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN fallback_model TEXT", []);
+
+    // Maximum agentic turns limit
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN max_turns INTEGER", []);
+
+    // Agent description for UI display
+    let _ = conn.execute("ALTER TABLE agents ADD COLUMN description TEXT", []);
+
+    // Opus 4.5 optimization flag
+    let _ = conn.execute(
+        "ALTER TABLE agents ADD COLUMN is_opus_optimized BOOLEAN DEFAULT 0",
+        [],
+    );
+
+    info!("Opcode 2.0 enhanced agent schema migration complete");
+
     // Create agent_runs table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS agent_runs (
@@ -351,7 +436,11 @@ pub async fn list_agents(db: State<'_, AgentDb>) -> Result<Vec<Agent>, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn
-        .prepare("SELECT id, name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks, created_at, updated_at FROM agents ORDER BY created_at DESC")
+        .prepare(
+            "SELECT id, name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks, created_at, updated_at,
+             subagents, permission_mode, allow_rules, deny_rules, mcp_servers, fallback_model, max_turns, description, is_opus_optimized
+             FROM agents ORDER BY created_at DESC"
+        )
         .map_err(|e| e.to_string())?;
 
     let agents = stmt
@@ -371,6 +460,16 @@ pub async fn list_agents(db: State<'_, AgentDb>) -> Result<Vec<Agent>, String> {
                 hooks: row.get(9)?,
                 created_at: row.get(10)?,
                 updated_at: row.get(11)?,
+                // Opcode 2.0 Enhanced Fields
+                subagents: row.get(12).ok(),
+                permission_mode: row.get(13).ok(),
+                allow_rules: row.get(14).ok(),
+                deny_rules: row.get(15).ok(),
+                mcp_servers: row.get(16).ok(),
+                fallback_model: row.get(17).ok(),
+                max_turns: row.get(18).ok(),
+                description: row.get(19).ok(),
+                is_opus_optimized: row.get(20).ok(),
             })
         })
         .map_err(|e| e.to_string())?
@@ -381,6 +480,7 @@ pub async fn list_agents(db: State<'_, AgentDb>) -> Result<Vec<Agent>, String> {
 }
 
 /// Create a new agent
+/// Enhanced for Opcode 2.0 with subagents, permissions, and MCP integration
 #[tauri::command]
 pub async fn create_agent(
     db: State<'_, AgentDb>,
@@ -393,25 +493,42 @@ pub async fn create_agent(
     enable_file_write: Option<bool>,
     enable_network: Option<bool>,
     hooks: Option<String>,
+    // Opcode 2.0 Enhanced Parameters
+    subagents: Option<String>,
+    permission_mode: Option<String>,
+    allow_rules: Option<String>,
+    deny_rules: Option<String>,
+    mcp_servers: Option<String>,
+    fallback_model: Option<String>,
+    max_turns: Option<i32>,
+    description: Option<String>,
+    is_opus_optimized: Option<bool>,
 ) -> Result<Agent, String> {
     let conn = db.0.lock().map_err(|e| e.to_string())?;
-    let model = model.unwrap_or_else(|| "sonnet".to_string());
+    let model = model.unwrap_or_else(|| "opus".to_string()); // Default to Opus 4.5
     let enable_file_read = enable_file_read.unwrap_or(true);
     let enable_file_write = enable_file_write.unwrap_or(true);
     let enable_network = enable_network.unwrap_or(false);
+    let permission_mode = permission_mode.unwrap_or_else(|| "default".to_string());
+    let is_opus_optimized = is_opus_optimized.unwrap_or(model == "opus");
 
     conn.execute(
-        "INSERT INTO agents (name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks],
+        "INSERT INTO agents (name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks,
+         subagents, permission_mode, allow_rules, deny_rules, mcp_servers, fallback_model, max_turns, description, is_opus_optimized)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+        params![name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks,
+                subagents, permission_mode, allow_rules, deny_rules, mcp_servers, fallback_model, max_turns, description, is_opus_optimized],
     )
     .map_err(|e| e.to_string())?;
 
     let id = conn.last_insert_rowid();
 
-    // Fetch the created agent
+    // Fetch the created agent with all fields
     let agent = conn
         .query_row(
-            "SELECT id, name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks, created_at, updated_at FROM agents WHERE id = ?1",
+            "SELECT id, name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks, created_at, updated_at,
+             subagents, permission_mode, allow_rules, deny_rules, mcp_servers, fallback_model, max_turns, description, is_opus_optimized
+             FROM agents WHERE id = ?1",
             params![id],
             |row| {
                 Ok(Agent {
@@ -427,11 +544,21 @@ pub async fn create_agent(
                     hooks: row.get(9)?,
                     created_at: row.get(10)?,
                     updated_at: row.get(11)?,
+                    subagents: row.get(12).ok(),
+                    permission_mode: row.get(13).ok(),
+                    allow_rules: row.get(14).ok(),
+                    deny_rules: row.get(15).ok(),
+                    mcp_servers: row.get(16).ok(),
+                    fallback_model: row.get(17).ok(),
+                    max_turns: row.get(18).ok(),
+                    description: row.get(19).ok(),
+                    is_opus_optimized: row.get(20).ok(),
                 })
             },
         )
         .map_err(|e| e.to_string())?;
 
+    info!("Created enhanced agent: {} (id: {}, model: {})", agent.name, id, agent.model);
     Ok(agent)
 }
 
@@ -538,7 +665,9 @@ pub async fn get_agent(db: State<'_, AgentDb>, id: i64) -> Result<Agent, String>
 
     let agent = conn
         .query_row(
-            "SELECT id, name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks, created_at, updated_at FROM agents WHERE id = ?1",
+            "SELECT id, name, icon, system_prompt, default_task, model, enable_file_read, enable_file_write, enable_network, hooks, created_at, updated_at,
+             subagents, permission_mode, allow_rules, deny_rules, mcp_servers, fallback_model, max_turns, description, is_opus_optimized
+             FROM agents WHERE id = ?1",
             params![id],
             |row| {
                 Ok(Agent {
@@ -547,13 +676,22 @@ pub async fn get_agent(db: State<'_, AgentDb>, id: i64) -> Result<Agent, String>
                     icon: row.get(2)?,
                     system_prompt: row.get(3)?,
                     default_task: row.get(4)?,
-                    model: row.get::<_, String>(5).unwrap_or_else(|_| "sonnet".to_string()),
+                    model: row.get::<_, String>(5).unwrap_or_else(|_| "opus".to_string()),
                     enable_file_read: row.get::<_, bool>(6).unwrap_or(true),
                     enable_file_write: row.get::<_, bool>(7).unwrap_or(true),
                     enable_network: row.get::<_, bool>(8).unwrap_or(false),
                     hooks: row.get(9)?,
                     created_at: row.get(10)?,
                     updated_at: row.get(11)?,
+                    subagents: row.get(12).ok(),
+                    permission_mode: row.get(13).ok(),
+                    allow_rules: row.get(14).ok(),
+                    deny_rules: row.get(15).ok(),
+                    mcp_servers: row.get(16).ok(),
+                    fallback_model: row.get(17).ok(),
+                    max_turns: row.get(18).ok(),
+                    description: row.get(19).ok(),
+                    is_opus_optimized: row.get(20).ok(),
                 })
             },
         )
@@ -753,8 +891,8 @@ pub async fn execute_agent(
         }
     };
 
-    // Build arguments
-    let args = vec![
+    // Build arguments with Opcode 2.0 enhanced options
+    let mut args = vec![
         "-p".to_string(),
         task.clone(),
         "--system-prompt".to_string(),
@@ -764,8 +902,74 @@ pub async fn execute_agent(
         "--output-format".to_string(),
         "stream-json".to_string(),
         "--verbose".to_string(),
-        "--dangerously-skip-permissions".to_string(),
     ];
+
+    // Add permission mode based on agent settings
+    let permission_mode = agent.permission_mode.as_deref().unwrap_or("bypassPermissions");
+    match permission_mode {
+        "plan" => {
+            args.push("--permission-mode".to_string());
+            args.push("plan".to_string());
+        }
+        "acceptEdits" => {
+            args.push("--permission-mode".to_string());
+            args.push("acceptEdits".to_string());
+        }
+        "bypassPermissions" => {
+            args.push("--dangerously-skip-permissions".to_string());
+        }
+        "default" => {
+            // No special permission flags - use Claude's default behavior
+        }
+        _ => {
+            // Unknown mode, default to bypass for backwards compatibility
+            args.push("--dangerously-skip-permissions".to_string());
+        }
+    }
+
+    // Add allow rules if present
+    if let Some(ref allow_rules) = agent.allow_rules {
+        if let Ok(rules) = serde_json::from_str::<Vec<PermissionRule>>(allow_rules) {
+            for rule in rules {
+                args.push("--allowedTools".to_string());
+                args.push(format!("{}:{}", rule.tool, rule.matcher));
+            }
+        }
+    }
+
+    // Add deny rules if present
+    if let Some(ref deny_rules) = agent.deny_rules {
+        if let Ok(rules) = serde_json::from_str::<Vec<PermissionRule>>(deny_rules) {
+            for rule in rules {
+                args.push("--disallowedTools".to_string());
+                args.push(format!("{}:{}", rule.tool, rule.matcher));
+            }
+        }
+    }
+
+    // Add MCP servers if present
+    if let Some(ref mcp_servers) = agent.mcp_servers {
+        if let Ok(servers) = serde_json::from_str::<Vec<String>>(mcp_servers) {
+            for server in servers {
+                args.push("--mcp-server".to_string());
+                args.push(server);
+            }
+        }
+    }
+
+    // Add max turns if specified
+    if let Some(max_turns) = agent.max_turns {
+        if max_turns > 0 {
+            args.push("--max-turns".to_string());
+            args.push(max_turns.to_string());
+        }
+    }
+
+    info!(
+        "Executing agent with permission_mode={}, args count={}",
+        permission_mode,
+        args.len()
+    );
 
     // Always use system binary execution (sidecar removed)
     spawn_agent_system(

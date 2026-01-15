@@ -47,7 +47,7 @@ regex = "1"
 glob = "0.3"
 base64 = "0.22"
 libc = "0.2"
-reqwest = { version = "0.12", features = ["json", "native-tls-vendored"] }
+reqwest = { version = "0.12", features = ["json", "native-tls-vendored", "stream"] }
 futures = "0.3"
 async-trait = "0.1"
 tempfile = "3"
@@ -64,6 +64,16 @@ clap = { version = "4.0", features = ["derive"] }
 futures-util = "0.3"
 # Pin image to avoid edition2024 requirement
 image = "=0.25.1"
+
+# Opcode 2.0 - Enhanced dependencies
+dashmap = "6.0"                           # Lock-free concurrent HashMap for session management
+jsonschema = "0.26"                       # JSON Schema validation for structured outputs
+thiserror = "2.0"                         # Ergonomic error handling
+parking_lot = "0.12"                      # Faster synchronization primitives
+tokio-stream = "0.1"                      # Stream utilities for async operations
+bytes = "1.5"                             # Efficient byte buffer handling
+url = "2.5"                               # URL parsing and manipulation
+toml = "0.8"                              # TOML parsing for Claude Code settings
 
 
 [target.'cfg(target_os = "macos")'.dependencies]
