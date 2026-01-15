@@ -1,10 +1,7 @@
 use clap::Parser;
 
-mod checkpoint;
-mod claude_binary;
-mod commands;
-mod process;
-mod web_server;
+// Import from library crate - all modules are declared there
+use opcode_lib::web_server;
 
 #[derive(Parser)]
 #[command(name = "opcode-web")]
