@@ -35,11 +35,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 
 // Types
@@ -482,7 +480,6 @@ export function RemoteMcpManager() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [toolsDialogOpen, setToolsDialogOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<RemoteMcpServer | null>(null);
-  const [testingId, setTestingId] = useState<string | null>(null);
 
   const loadServers = useCallback(async () => {
     try {

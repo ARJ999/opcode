@@ -10,15 +10,8 @@
  * - Model selection with Opus 4.5 default
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,17 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tabs,
   TabsContent,
@@ -120,7 +104,6 @@ function SubagentEditor({
   subagents: SubagentDef[];
   onChange: (subagents: SubagentDef[]) => void;
 }) {
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [newSubagent, setNewSubagent] = useState<SubagentDef>({
     name: "",
     description: "",
@@ -507,6 +490,7 @@ export function AgentBuilder({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("basic");
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -570,7 +554,7 @@ export function AgentBuilder({
         </div>
       )}
 
-      <Tabs defaultValue="basic" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="basic">Basic</TabsTrigger>
           <TabsTrigger value="permissions">Permissions</TabsTrigger>
